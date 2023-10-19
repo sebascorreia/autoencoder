@@ -17,8 +17,8 @@ tf.compat.v1.disable_eager_execution()
 
 class VAE:
     """
-    VAE represents a Deep convolutional variational autoencoder architecture with
-    mirrored encoder and decoder components.
+    VAE represents a Deep Convolutional variational autoencoder architecture
+    with mirrored encoder and decoder components.
     """
 
     def __init__(self,
@@ -27,11 +27,11 @@ class VAE:
                  conv_kernels,
                  conv_strides,
                  latent_space_dim):
-        self.input_shape = input_shape  # [28,28,1]
-        self.conv_filters = conv_filters  # [2,4,8]
-        self.conv_kernels = conv_kernels  # [3,5,3]
-        self.conv_strides = conv_strides  # [1,2,2]
-        self.latent_space_dim = latent_space_dim  # 2
+        self.input_shape = input_shape # [28, 28, 1]
+        self.conv_filters = conv_filters # [2, 4, 8]
+        self.conv_kernels = conv_kernels # [3, 5, 3]
+        self.conv_strides = conv_strides # [1, 2, 2]
+        self.latent_space_dim = latent_space_dim # 2
         self.reconstruction_loss_weight = 1000
 
         self.encoder = None
@@ -41,6 +41,7 @@ class VAE:
         self._num_conv_layers = len(conv_filters)
         self._shape_before_bottleneck = None
         self._model_input = None
+
         self._build()
 
     def summary(self):
@@ -48,26 +49,59 @@ class VAE:
         self.decoder.summary()
         self.model.summary()
 
-    def _build(self):
-        self._build_encoder()
-        self._build_decoder()
-        self._build_autoencoder()
-
-    def _build_autoencoder(self):
-        model_input = self._model_input
-        model_output = self.decoder(self.encoder(model_input))
-        self.model = Model(model_input, model_output, name="autoencoder")
-
     def compile(self, learning_rate=0.0001):
         optimizer = Adam(learning_rate=learning_rate)
-        self.model.compile(optimizer,
+        self.model.compile(optimizer=optimizer,
                            loss=self._calculate_combined_loss,
-                           metrics=[self._calculate_reconstruction_loss, self._calculate_kl_loss])
+                           metrics=[self._calculate_reconstruction_loss,
+                                    self._calculate_kl_loss])
+
+    def train(self, x_train, batch_size, num_epochs):
+        self.model.fit(x_train,
+                       x_train,
+                       batch_size=batch_size,
+                       epochs=num_epochs,
+                       shuffle=True)
 
     def save(self, save_folder="."):
         self._create_folder_if_it_doesnt_exist(save_folder)
         self._save_parameters(save_folder)
         self._save_weights(save_folder)
+
+    def load_weights(self, weights_path):
+        self.model.load_weights(weights_path)
+
+    def reconstruct(self, images):
+        latent_representations = self.encoder.predict(images)
+        reconstructed_images = self.decoder.predict(latent_representations)
+        return reconstructed_images, latent_representations
+
+    @classmethod
+    def load(cls, save_folder="."):
+        parameters_path = os.path.join(save_folder, "parameters.pkl")
+        with open(parameters_path, "rb") as f:
+            parameters = pickle.load(f)
+        autoencoder = VAE(*parameters)
+        weights_path = os.path.join(save_folder, "weights.h5")
+        autoencoder.load_weights(weights_path)
+        return autoencoder
+
+    def _calculate_combined_loss(self, y_target, y_predicted):
+        reconstruction_loss = self._calculate_reconstruction_loss(y_target, y_predicted)
+        kl_loss = self._calculate_kl_loss(y_target, y_predicted)
+        combined_loss = self.reconstruction_loss_weight * reconstruction_loss\
+                                                         + kl_loss
+        return combined_loss
+
+    def _calculate_reconstruction_loss(self, y_target, y_predicted):
+        error = y_target - y_predicted
+        reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
+        return reconstruction_loss
+
+    def _calculate_kl_loss(self, y_target, y_predicted):
+        kl_loss = -0.5 * K.sum(1 + self.log_variance - K.square(self.mu) -
+                               K.exp(self.log_variance), axis=1)
+        return kl_loss
 
     def _create_folder_if_it_doesnt_exist(self, folder):
         if not os.path.exists(folder):
@@ -89,45 +123,15 @@ class VAE:
         save_path = os.path.join(save_folder, "weights.h5")
         self.model.save_weights(save_path)
 
-    def load_weights(self, weights_path):
-        self.model.load_weights(weights_path)
+    def _build(self):
+        self._build_encoder()
+        self._build_decoder()
+        self._build_autoencoder()
 
-    def reconstruct(self, images):
-        latent_representations = self.encoder.predict(images)
-        reconstructed_images = self.decoder.predict(latent_representations)
-        return reconstructed_images, latent_representations
-
-    @classmethod
-    def load(cls, save_folder="."):
-        parameters_path = os.path.join(save_folder, "parameters.pkl")
-        weights_path = os.path.join(save_folder, "weights.h5")
-        with open(parameters_path, "rb") as f:
-            parameters = pickle.load(f)
-        autoencoder = VAE(*parameters)
-        autoencoder.load_weights(weights_path)
-        return autoencoder
-
-    def _calculate_combined_loss(self, y_target, y_predicted):
-        reconstruction_loss = self._calculate_reconstruction_loss(y_target, y_predicted)
-        kl_loss = self._calculate_kl_loss(y_target, y_predicted)
-        combined_loss = self.reconstruction_loss_weight * reconstruction_loss + kl_loss
-        return combined_loss
-
-    def _calculate_reconstruction_loss(self, y_target, y_predicted):
-        error = y_target - y_predicted
-        reconstruction_loss = K.mean(K.square(error), axis= [1,2,3])
-        return reconstruction_loss
-
-    def _calculate_kl_loss(self, y_target, y_predicted):
-        kl_loss = - 0.5 * K.sum(1 + self.log_variance - K.square(self.mu) -
-                                K.exp(self.log_variance), axis=1)
-        return kl_loss
-    def train(self, x_train, batch_size, num_epochs):
-        self.model.fit(x_train,
-                       x_train,
-                       batch_size=batch_size,
-                       epochs=num_epochs,
-                       shuffle=True)
+    def _build_autoencoder(self):
+        model_input = self._model_input
+        model_output = self.decoder(self.encoder(model_input))
+        self.model = Model(model_input, model_output, name="autoencoder")
 
     def _build_decoder(self):
         decoder_input = self._add_decoder_input()
@@ -141,7 +145,7 @@ class VAE:
         return Input(shape=self.latent_space_dim, name="decoder_input")
 
     def _add_dense_layer(self, decoder_input):
-        num_neurons = np.prod(self._shape_before_bottleneck)
+        num_neurons = np.prod(self._shape_before_bottleneck) # [1, 2, 4] -> 8
         dense_layer = Dense(num_neurons, name="decoder_dense")(decoder_input)
         return dense_layer
 
@@ -151,7 +155,7 @@ class VAE:
     def _add_conv_transpose_layers(self, x):
         """Add conv transpose blocks."""
         # loop through all the conv layers in reverse order and stop at the
-        # first layer.
+        # first layer
         for layer_index in reversed(range(1, self._num_conv_layers)):
             x = self._add_conv_transpose_layer(layer_index, x)
         return x
@@ -193,15 +197,16 @@ class VAE:
         return Input(shape=self.input_shape, name="encoder_input")
 
     def _add_conv_layers(self, encoder_input):
-        """Creates all convolutional blocks in encoders"""
+        """Create all convolutional blocks in encoder."""
         x = encoder_input
         for layer_index in range(self._num_conv_layers):
             x = self._add_conv_layer(layer_index, x)
         return x
 
     def _add_conv_layer(self, layer_index, x):
-        """Adds a convolutional block to a graph of layers, consisting of,
-        conv 2d + ReLU + batch normalization"""
+        """Add a convolutional block to a graph of layers, consisting of
+        conv 2d + ReLU + batch normalization.
+        """
         layer_number = layer_index + 1
         conv_layer = Conv2D(
             filters=self.conv_filters[layer_index],
@@ -216,20 +221,24 @@ class VAE:
         return x
 
     def _add_bottleneck(self, x):
-        """Flatten data and add bottleneck with gaussian sampling (Dense Layer)"""
+        """Flatten data and add bottleneck with Gaussian sampling (Dense
+        layer).
+        """
         self._shape_before_bottleneck = K.int_shape(x)[1:]
         x = Flatten()(x)
-        self.mu = Dense(self.latent_space_dim, name="mu")(x)  # branching out architecture
-        self.log_variance = Dense(self.latent_space_dim,  # into 2 branches of dense layers
+        self.mu = Dense(self.latent_space_dim, name="mu")(x)
+        self.log_variance = Dense(self.latent_space_dim,
                                   name="log_variance")(x)
 
         def sample_point_from_normal_distribution(args):
             mu, log_variance = args
-            epsilon = K.random_normal(shape=K.shape(self.mu), mean=0., stddev=1.)
+            epsilon = K.random_normal(shape=K.shape(self.mu), mean=0.,
+                                      stddev=1.)
             sampled_point = mu + K.exp(log_variance / 2) * epsilon
             return sampled_point
 
-        x = Lambda(sample_point_from_normal_distribution, name="encoder_output")([self.mu, self.log_variance])
+        x = Lambda(sample_point_from_normal_distribution,
+                   name="encoder_output")([self.mu, self.log_variance])
         return x
 
 
