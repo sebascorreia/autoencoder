@@ -86,6 +86,7 @@ class VAE:
         autoencoder.load_weights(weights_path)
         return autoencoder
 
+    @staticmethod
     def _calculate_combined_loss(self, y_target, y_predicted):
         reconstruction_loss = self._calculate_reconstruction_loss(y_target, y_predicted)
         kl_loss = self._calculate_kl_loss(y_target, y_predicted)
@@ -93,16 +94,17 @@ class VAE:
                                                          + kl_loss
         return combined_loss
 
+
+    @staticmethod
     def _calculate_reconstruction_loss(self, y_target, y_predicted):
         error = y_target - y_predicted
         reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
         return reconstruction_loss
-
+    @staticmethod
     def _calculate_kl_loss(self, y_target, y_predicted):
         kl_loss = -0.5 * K.sum(1 + self.log_variance - K.square(self.mu) -
                                K.exp(self.log_variance), axis=1)
         return kl_loss
-
     def _create_folder_if_it_doesnt_exist(self, folder):
         if not os.path.exists(folder):
             os.makedirs(folder)
