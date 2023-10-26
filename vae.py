@@ -1,16 +1,16 @@
-from tensorflow import keras
+import tensorflow as tf
 import os
 import pickle
-from keras import Model
-from keras.layers import (Input, Conv2D, ReLU, Flatten, Dense, Reshape,
+from tf.keras import Model
+from tf.keras.layers import (Input, Conv2D, ReLU, Flatten, Dense, Reshape,
                           Conv2DTranspose, Activation, Lambda)
-from keras import backend as K
-from keras.layers import BatchNormalization
-from keras.optimizers import Adam
-from keras.losses import MeanSquaredError as MSE
+from tf.keras import backend as K
+from tf.keras.layers import BatchNormalization
+from tf.keras.optimizers import Adam
+#from keras.losses import MeanSquaredError as MSE
 import numpy as np
 
-import tensorflow as tf
+
 
 tf.compat.v1.disable_eager_execution()
 
@@ -27,11 +27,11 @@ class VAE:
                  conv_kernels,
                  conv_strides,
                  latent_space_dim):
-        self.input_shape = input_shape  # [28, 28, 1]
-        self.conv_filters = conv_filters  # [2, 4, 8]
-        self.conv_kernels = conv_kernels  # [3, 5, 3]
-        self.conv_strides = conv_strides  # [1, 2, 2]
-        self.latent_space_dim = latent_space_dim  # 2
+        self.input_shape = input_shape # [28, 28, 1]
+        self.conv_filters = conv_filters # [2, 4, 8]
+        self.conv_kernels = conv_kernels # [3, 5, 3]
+        self.conv_strides = conv_strides # [1, 2, 2]
+        self.latent_space_dim = latent_space_dim # 2
         self.reconstruction_loss_weight = 1000
 
         self.encoder = None
@@ -52,9 +52,9 @@ class VAE:
     def compile(self, learning_rate=0.0001):
         optimizer = Adam(learning_rate=learning_rate)
         self.model.compile(optimizer=optimizer,
-                           loss=VAE._calculate_combined_loss,
-                           metrics=[VAE.reconstruction_loss_metric,
-                                    VAE.kl_loss_metric])
+                           loss=self._calculate_combined_loss,
+                           metrics=[self._calculate_reconstruction_loss,
+                                    self._calculate_kl_loss])
 
     def train(self, x_train, batch_size, num_epochs):
         self.model.fit(x_train,
@@ -86,31 +86,18 @@ class VAE:
         autoencoder.load_weights(weights_path)
         return autoencoder
 
-    @staticmethod
-    def reconstruction_loss_metric(y_true, y_pred):
-        reconstructions, _, _ = y_pred
-        return VAE._calculate_reconstruction_loss(y_true, reconstructions)
-
-    @staticmethod
-    def kl_loss_metric(y_true, y_pred):
-        _, mu, log_variance = y_pred
-        return VAE._calculate_kl_loss(mu, log_variance)
-
-    @staticmethod
     def _calculate_combined_loss(self, y_target, y_predicted):
         reconstruction_loss = self._calculate_reconstruction_loss(y_target, y_predicted)
         kl_loss = self._calculate_kl_loss(y_target, y_predicted)
-        combined_loss = self.reconstruction_loss_weight * reconstruction_loss \
-                        + kl_loss
+        combined_loss = self.reconstruction_loss_weight * reconstruction_loss\
+                                                         + kl_loss
         return combined_loss
 
-    @staticmethod
     def _calculate_reconstruction_loss(self, y_target, y_predicted):
         error = y_target - y_predicted
         reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
         return reconstruction_loss
 
-    @staticmethod
     def _calculate_kl_loss(self, y_target, y_predicted):
         kl_loss = -0.5 * K.sum(1 + self.log_variance - K.square(self.mu) -
                                K.exp(self.log_variance), axis=1)
@@ -158,7 +145,7 @@ class VAE:
         return Input(shape=self.latent_space_dim, name="decoder_input")
 
     def _add_dense_layer(self, decoder_input):
-        num_neurons = np.prod(self._shape_before_bottleneck)  # [1, 2, 4] -> 8
+        num_neurons = np.prod(self._shape_before_bottleneck) # [1, 2, 4] -> 8
         dense_layer = Dense(num_neurons, name="decoder_dense")(decoder_input)
         return dense_layer
 
@@ -234,7 +221,7 @@ class VAE:
         return x
 
     def _add_bottleneck(self, x):
-        """Flatten data and add bottleneck with Gaussian sampling (Dense
+        """Flatten data and add bottleneck with Guassian sampling (Dense
         layer).
         """
         self._shape_before_bottleneck = K.int_shape(x)[1:]
