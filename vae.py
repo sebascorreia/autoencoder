@@ -98,7 +98,7 @@ class VAE:
 
     def _calculate_combined_loss(self, y_target, y_predicted):
         reconstruction_loss = _calculate_reconstruction_loss(y_target, y_predicted)
-        kl_loss = calculate_kl_loss(self)
+        kl_loss = calculate_kl_loss(self)()
         combined_loss = self.reconstruction_loss_weight * reconstruction_loss\
                                                          + kl_loss
         return combined_loss
