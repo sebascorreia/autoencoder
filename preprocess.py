@@ -48,7 +48,7 @@ class Padder:
         return padded_array
 
 
-class LoadSpectrogramExtractor:
+class LogSpectrogramExtractor:
     """extracts log spectrograms in db from a time-series signal"""
 
     def __init__(self, frame_size, hop_length):
