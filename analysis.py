@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from ae import Autoencoder
 from train import load_mnist
 
+from vae import VAE
 
 def select_images(images, labels, num_images=10):
     sample_images_index = np.random.choice(range(len(images)), num_images)
