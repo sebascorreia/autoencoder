@@ -105,7 +105,7 @@ class Saver:
     @staticmethod
     def _save(data, save_path):
         with open(save_path, "wb") as f:
-            pickle.dump(data, save_path)
+            pickle.dump(data, f)
 
 
 class PreprocessingPipeLine:
