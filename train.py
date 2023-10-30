@@ -41,11 +41,11 @@ def train_ae(x_train, learning_rate, batch_size, epochs):
     return autoencoder
 def train_vae(x_train, learning_rate, batch_size, epochs):
     autoencoder = VAE(
-        input_shape=(28, 28, 1),
-        conv_filters=(32, 64, 64, 64),
-        conv_kernels=(3, 3, 3, 3),
-        conv_strides=(1, 2, 2, 1),
-        latent_space_dim=2
+        input_shape=(256, 64, 1),
+        conv_filters=(512, 256, 128, 64, 32),
+        conv_kernels=(3, 3, 3, 3, 3),
+        conv_strides=(2, 2, 2, 2, (2,1)),
+        latent_space_dim=128
     )
     autoencoder.summary()
     autoencoder.compile(learning_rate)
