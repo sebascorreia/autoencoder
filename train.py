@@ -2,7 +2,8 @@ from ae import Autoencoder
 from vae import VAE
 from tensorflow import keras
 from keras.datasets import mnist
-
+import os
+import numpy as np
 LEARNING_RATE = 0.0005
 BATCH_SIZE = 32
 EPOCHS = 100
@@ -15,6 +16,17 @@ def load_mnist():
     x_test = x_test.reshape(x_test.shape + (1,))
 
     return x_train, y_train, x_test, y_test
+
+def load_ffsdd(spectrograms_path):
+    x_train = []
+    for root,_,file_names in os.walk(spectrograms_path):
+        for file_name in file_names:
+            file_path = os.path.join(root, file_name)
+            spectrogram = np.load(file_path)
+            x_train.append(spectrogram)
+    x_train = np.array(x_train)
+    x_train = x_train[..., np.newaxis]
+
 def train_ae(x_train, learning_rate, batch_size, epochs):
     autoencoder = Autoencoder(
         input_shape=(28, 28, 1),
