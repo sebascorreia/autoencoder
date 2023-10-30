@@ -26,6 +26,7 @@ def load_fsdd(spectrograms_path):
             x_train.append(spectrogram)
     x_train = np.array(x_train)
     x_train = x_train[..., np.newaxis]
+    return x_train
 
 def train_ae(x_train, learning_rate, batch_size, epochs):
     autoencoder = Autoencoder(
