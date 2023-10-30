@@ -1,20 +1,21 @@
 """
-1-load a file
-2- pad the signal
+1- load a file
+2- pad the signal (if necessary)
 3- extracting log spectrogram from signal
-4- normalize spectogram
-5- save normalized spectrogram
+4- normalise spectrogram
+5- save the normalised spectrogram
 
-Preprocessing Pipeline
+PreprocessingPipeline
 """
-import librosa
-import numpy as np
 import os
 import pickle
 
+import librosa
+import numpy as np
+
 
 class Loader:
-    """Loader is responsible for loading an audio file"""
+    """Loader is responsible for loading an audio file."""
 
     def __init__(self, sample_rate, duration, mono):
         self.sample_rate = sample_rate
@@ -30,7 +31,7 @@ class Loader:
 
 
 class Padder:
-    """Padder is responsible to apply padding to an array"""
+    """Padder is responsible to apply padding to an array."""
 
     def __init__(self, mode="constant"):
         self.mode = mode
@@ -49,7 +50,9 @@ class Padder:
 
 
 class LogSpectrogramExtractor:
-    """extracts log spectrograms in db from a time-series signal"""
+    """LogSpectrogramExtractor extracts log spectrograms (in dB) from a
+    time-series signal.
+    """
 
     def __init__(self, frame_size, hop_length):
         self.frame_size = frame_size
@@ -58,14 +61,14 @@ class LogSpectrogramExtractor:
     def extract(self, signal):
         stft = librosa.stft(signal,
                             n_fft=self.frame_size,
-                            hop_length=self.hop_length)
+                            hop_length=self.hop_length)[:-1]
         spectrogram = np.abs(stft)
         log_spectrogram = librosa.amplitude_to_db(spectrogram)
         return log_spectrogram
 
 
 class MinMaxNormaliser:
-    """applies minmax normalization to an array"""
+    """MinMaxNormaliser applies min max normalisation to an array."""
 
     def __init__(self, min_val, max_val):
         self.min = min_val
@@ -83,7 +86,7 @@ class MinMaxNormaliser:
 
 
 class Saver:
-    """Saver is responsible to save features, and the min max values"""
+    """saver is responsible to save features, and the min max values."""
 
     def __init__(self, feature_save_dir, min_max_values_save_dir):
         self.feature_save_dir = feature_save_dir
@@ -94,28 +97,30 @@ class Saver:
         np.save(save_path, feature)
 
     def save_min_max_values(self, min_max_values):
-        save_path = os.path.join(self.min_max_values_save_dir, "min_max_values.pkl")
+        save_path = os.path.join(self.min_max_values_save_dir,
+                                 "min_max_values.pkl")
         self._save(min_max_values, save_path)
-
-    def _generate_save_path(self, file_path):
-        file_name = os.path.split(file_path)[1]
-        save_path = os.path.join(self.feature_save_dir, file_name + ".npy")
-        return save_path
 
     @staticmethod
     def _save(data, save_path):
         with open(save_path, "wb") as f:
             pickle.dump(data, f)
 
+    def _generate_save_path(self, file_path):
+        file_name = os.path.split(file_path)[1]
+        save_path = os.path.join(self.feature_save_dir, file_name + ".npy")
+        return save_path
 
-class PreprocessingPipeLine:
-    """Processes audio files in a directory applying the
-    following steps to each file:
-        1-load a file
-        2- pad the signal
+
+class PreprocessingPipeline:
+    """PreprocessingPipeline processes audio files in a directory, applying
+    the following steps to each file:
+        1- load a file
+        2- pad the signal (if necessary)
         3- extracting log spectrogram from signal
-        4- normalize spectogram
-        5- save normalized spectrogram
+        4- normalise spectrogram
+        5- save the normalised spectrogram
+
     Storing the min max values for all the log spectrograms.
     """
 
@@ -152,7 +157,7 @@ class PreprocessingPipeLine:
         feature = self.extractor.extract(signal)
         norm_feature = self.normaliser.normalise(feature)
         save_path = self.saver.save_feature(norm_feature, file_path)
-        self._store_min_max_value(save_path, feature.min, feature.max)
+        self._store_min_max_value(save_path, feature.min(), feature.max())
 
     def _is_padding_necessary(self, signal):
         if len(signal) < self._num_expected_samples:
