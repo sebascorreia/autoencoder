@@ -17,7 +17,7 @@ def load_mnist():
 
     return x_train, y_train, x_test, y_test
 
-def load_ffsdd(spectrograms_path):
+def load_fsdd(spectrograms_path):
     x_train = []
     for root,_,file_names in os.walk(spectrograms_path):
         for file_name in file_names:
